@@ -1,0 +1,24 @@
+# Ignore Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore Jupyter notebook metadata
+*.ipynb_meta/
+
+# Ignore Jupyter notebook kernel files
+*.json
+
+# Ignore Jupyter notebook output files
+*.ipynb_checkpoints/
+
+# Ignore Jupyter notebook hidden directories
+/.ipynb_checkpoints
+
+
+# Ignore Jupyter notebook autosave files
+# .ipynb*
+
+# Ignore Jupyter notebook workspace files
+# *.ipynb.workspace
+
+# Ignore Jupyter notebook pycache directories
+__pycache__/
