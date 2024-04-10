@@ -2,75 +2,92 @@ from dataclasses import dataclass
 import xml.etree.ElementTree as ET
 
 PURPLE  = "#CCCCFF"
+MID_PURPLE = "#CC99FF"
 BLUE    = "#CCE5FF"
+MID_BLUE = "#66B2FF"
 YELLOW  = "#FFF2CC"
 ORANGE  = "#FFD9B3"
 RED     = "#FFCCCC"
-GREEN   = "#CCFFCC"
+GREEN   = "#D6FFC9"
 WHITE   = "#FFFFFF"
 BLACK   = "#000000"
+PINK    = "#FFCCFF"
+CYAN    = "#CCFFFF"
+GREY    = "#E6E6E6"
+WHITE   = "#FFFFFF"
 
 
 AST_NODE_COLORS = {
-    'Module': PURPLE,
-    'Interactive': BLUE,
-    'Expression': YELLOW,
-    'Suite': ORANGE,
-    'FunctionDef': RED,
-    'AsyncFunctionDef': GREEN,
-    'ClassDef': PURPLE,
-    'Return': BLUE,
-    'Delete': YELLOW,
-    'Assign': ORANGE,
-    'AugAssign': RED,
+    'Module': MID_PURPLE,
+
+    'Interactive': ORANGE,
+    'Expression':  ORANGE,
+    'Suite':       ORANGE,
+
+    'FunctionDef': MID_BLUE,
+    'AsyncFunctionDef': MID_BLUE,
+    'ClassDef': MID_BLUE,
+
+    'Name': BLUE,
+
+    'Return': GREEN,
+    'Delete': GREEN,
+    'Assign': GREEN,
+    'AugAssign': GREEN,
     'AnnAssign': GREEN,
-    'For': PURPLE,
-    'AsyncFor': BLUE,
-    'While': YELLOW,
-    'If': ORANGE,
-    'With': RED,
-    'AsyncWith': GREEN,
-    'Raise': PURPLE,
-    'Try': BLUE,
-    'Assert': YELLOW,
-    'Import': ORANGE,
+
+    'For': CYAN,
+    'AsyncFor': CYAN,
+    'While': CYAN,
+    'If': CYAN,
+    'With': CYAN,
+    'AsyncWith': CYAN,
+
+    'Raise': RED,
+    'Try': RED,
+    'Assert': RED,
+    'Import': RED,
     'ImportFrom': RED,
-    'Global': GREEN,
-    'Nonlocal': PURPLE,
-    'Expr': BLUE,
-    'Pass': YELLOW,
-    'Break': ORANGE,
+    'Global': RED,
+    'Nonlocal': RED,
+    'Expr': RED,
+    'Pass': RED,
+    'Break': RED,
     'Continue': RED,
-    'BoolOp': GREEN,
-    'BinOp': PURPLE,
-    'UnaryOp': BLUE,
-    'Lambda': YELLOW,
-    'IfExp': ORANGE,
-    'Dict': RED,
-    'Set': GREEN,
-    'ListComp': PURPLE,
-    'SetComp': BLUE,
-    'DictComp': YELLOW,
+
+    'BoolOp': PURPLE,
+    'BinOp':  PURPLE,
+    'UnaryOp':PURPLE,
+    'Lambda': PURPLE,
+    'IfExp':  PURPLE,
+
+    'Dict': ORANGE,
+    'Set': ORANGE,
+    'ListComp': ORANGE,
+    'SetComp': ORANGE,
+    'DictComp': ORANGE,
     'GeneratorExp': ORANGE,
-    'Await': RED,
-    'Yield': GREEN,
-    'YieldFrom': PURPLE,
-    'Compare': BLUE,
-    'Call': YELLOW,
-    'Num': ORANGE,
-    'Str': RED,
-    'FormattedValue': GREEN,
-    'JoinedStr': PURPLE,
-    'Bytes': BLUE,
-    'NameConstant': YELLOW,
-    'Ellipsis': ORANGE,
-    'Constant': RED,
-    'Attribute': GREEN,
-    'Subscript': PURPLE,
-    'Starred': BLUE,
-    'Name': YELLOW,
     'List': ORANGE,
-    'Tuple': RED
+    'Tuple': ORANGE,
+
+    'Await': PINK,
+    'Yield': PINK,
+    'YieldFrom': PINK,
+    'Compare': PINK,
+    'Call': PINK,
+
+    'Num': WHITE,
+    'Str': WHITE,
+    'FormattedValue': WHITE,
+    'JoinedStr': WHITE,
+    'Bytes': WHITE,
+    'NameConstant': WHITE,
+    'Ellipsis': WHITE,
+    'Constant': WHITE,
+    'Attribute': WHITE,
+    'Subscript': WHITE,
+    'Starred': WHITE,
+
 }
 
 NEWLINE = '&lt;br&gt;'
@@ -81,12 +98,14 @@ class OurGraphToXML:
     x_scaling: int = 1
     y_scaling: int = 1
     box_width: int = 120
-    box_height: int = 60
+    box_height: int = 120
 
     def node_html_label(self, G, node_id):
-        attrs = G.node_attr(node_id)
+        attrs = G.our_nodes[node_id].attrs
+
+        # attrs = G.node_attr(node_id)
         label = '<br>'.join([
-            "<b> type: " + G.ast_nodes[node_id].__class__.__name__ + "</b>"
+            "<b>" + G.ast_nodes[node_id].__class__.__name__ + "</b>"    #making the the ast type bold
         ]
         +
         [f"{key}: {value}" for key, value in attrs.items() if key != 'type']
@@ -113,7 +132,7 @@ class OurGraphToXML:
         box.set('id', str(node_id))
         label = self.node_html_label(G, node_id)
         box.set('value', label)
-        color = AST_NODE_COLORS.get(G.ast_nodes[node_id].__class__.__name__, YELLOW)
+        color = AST_NODE_COLORS.get(G.ast_nodes[node_id].__class__.__name__, GREY)
 
         box.set('style', f'rounded=1;whiteSpace=wrap;html=1;fillColor={color};strokeColor=#000000;')
         box.set('parent', "1")
