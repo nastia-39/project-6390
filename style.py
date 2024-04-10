@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import xml.etree.ElementTree as ET
-from graph import Edge
+from graph import Edge, OurGraph
 
 PURPLE  = "#CCCCFF"
 MID_PURPLE = "#CC99FF"
@@ -101,7 +101,7 @@ class OurGraphToXML:
     box_width: int = 120
     box_height: int = 120
 
-    def node_html_label(self, G, node_id):
+    def node_html_label(self, G: OurGraph, node_id):
         attrs = G.our_nodes[node_id].attrs
 
         # attrs = G.node_attr(node_id)
@@ -171,7 +171,7 @@ class OurGraphToXML:
 
         return mxCell
     
-    def graph_to_xml(self, G):
+    def graph_to_xml(self, G: OurGraph):
         mxfile = ET.Element('mxfile', host="65bd71144e")
 
         # Create diagram element
@@ -190,7 +190,7 @@ class OurGraphToXML:
         ET.SubElement(root, 'mxCell', id="0")
         ET.SubElement(root, 'mxCell', id="1", parent="0")
 
-        for node in G.G.nodes:
+        for node in G.ast_nodes:
             root.append(self.node_to_xml(G, node))
 
         for edge in G.our_edges.values():
