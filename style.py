@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import xml.etree.ElementTree as ET
+from graph import Edge
 
 PURPLE  = "#CCCCFF"
 MID_PURPLE = "#CC99FF"
@@ -141,9 +142,12 @@ class OurGraphToXML:
 
         return box
 
-    def edge_to_xml(self, source_id, target_id):
+    def edge_to_xml(self, edge: Edge):
+        source_id, target_id = edge.parent.node_id, edge.child.node_id
+
         edge_id = f'{source_id}_{target_id}'
-        mxCell = ET.Element('mxCell', id=edge_id, value="", style="endArrow=classic;html=1;", parent="1", source=str(source_id), target=str(target_id), edge="1")
+        value = str(edge.attrs)
+        mxCell = ET.Element('mxCell', id=edge_id, value=value, style="endArrow=classic;html=1;", parent="1", source=str(source_id), target=str(target_id), edge="1")
 
         # Create mxGeometry element
         mxGeometry = ET.SubElement(mxCell, 'mxGeometry', width="50", height="50", relative="1")
@@ -189,7 +193,7 @@ class OurGraphToXML:
         for node in G.G.nodes:
             root.append(self.node_to_xml(G, node))
 
-        for (source_id, target_id) in G.edges():
-            root.append(self.edge_to_xml(source_id, target_id))
+        for edge in G.our_edges.values():
+            root.append(self.edge_to_xml(edge))
 
         return (mxfile)
