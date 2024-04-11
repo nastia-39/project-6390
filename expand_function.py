@@ -7,6 +7,9 @@ from graph import OurGraph
 
 
 def rename_all_vars(ast_tree: ast.AST, rename_fun: Callable = lambda x: x):
+    """
+    renames all variables in the ast_tree calling rename_fun on each name
+    """
     new_ast_tree = copy.deepcopy(ast_tree)
 
     for node in ast.walk(new_ast_tree):
@@ -16,6 +19,9 @@ def rename_all_vars(ast_tree: ast.AST, rename_fun: Callable = lambda x: x):
 
 
 def get_assign_node(args: List[ast.arg], vars: List[ast.AST]):
+    """
+    
+    """
     new_vars_for_args = [ast.Name(id=x.arg, ctx=ast.Store()) for x in args]
     targets_tuple = ast.Tuple(elts=new_vars_for_args,) # ctx=ast.Store()
     value_tuple = ast.Tuple(elts=vars,) # ctx=ast.Load()
@@ -24,6 +30,16 @@ def get_assign_node(args: List[ast.arg], vars: List[ast.AST]):
 
 
 def expand_function(G: OurGraph, node_id: int):
+    """
+    Suppose we have function f(x, y) = x + y and call it on z = f(1, 2)
+    1. retrieve the tree that corresponds to the function definition: z = (x + y)
+    2. rename all variables in it adding suffix "_new": z = (x_new + y_new) 
+        we do this to avoid name conflicts with the variables in the parent scope, 
+        ideally should be handled a bit better
+    3. create a new assign node that assigns the arguments of the function call to the new variables 
+        (x_new, y_new) = (1, 2), 
+    4. insert it before the function expansion: (x_new, y_new) = (1, 2); z = (x_new + y_new)
+    """
     def renaming_fun(x):
         return x + "_new"
 
