@@ -72,5 +72,5 @@ def expand_function(G: OurGraph, node_id: int):
 
     call_index = grandparent.body.index(parent)
     grandparent.body.insert(call_index, new_assign_node)
-    
-    return OurGraph(G.ast_tree)
+    G.refresh()
+    return G
