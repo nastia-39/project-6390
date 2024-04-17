@@ -77,17 +77,20 @@ AST_NODE_COLORS = {
     'Compare': PINK,
     'Call': PINK,
 
-    'Num': WHITE,
-    'Str': WHITE,
-    'FormattedValue': WHITE,
-    'JoinedStr': WHITE,
-    'Bytes': WHITE,
-    'NameConstant': WHITE,
-    'Ellipsis': WHITE,
-    'Constant': WHITE,
-    'Attribute': WHITE,
-    'Subscript': WHITE,
-    'Starred': WHITE,
+    'Num': YELLOW,
+    'Str': YELLOW,
+    'FormattedValue': YELLOW,
+    'JoinedStr': YELLOW,
+    'Bytes': YELLOW,
+    'NameConstant': YELLOW,
+    'Ellipsis': YELLOW,
+    'Constant': YELLOW,
+    'Attribute': YELLOW,
+    'Subscript': YELLOW,
+    'Starred': YELLOW,
+
+    'Store': WHITE,
+    'Load': WHITE,
 
 }
 
@@ -99,11 +102,11 @@ class OurGraphToXML:
     x_scaling: int = 1
     y_scaling: int = 1
     box_width: int = 120
-    box_height: int = 120
+    box_height: int = 60
+    to_ignore: tuple = ('lineno', 'col_offset', 'end_lineno', 'end_col_offset')
 
     def node_html_label(self, G: OurGraph, node_id):
-        attrs = G.our_nodes[node_id].attrs
-
+        attrs = {k: v for k, v in G.our_nodes[node_id].attrs.items() if k not in self.to_ignore}
         # attrs = G.node_attr(node_id)
         label = '<br>'.join([
             "<b>" + G.ast_nodes[node_id].__class__.__name__ + "</b>"    #making the the ast type bold
@@ -112,7 +115,6 @@ class OurGraphToXML:
         [f"{key}: {value}" for key, value in attrs.items() if key != 'type']
         )
      
-
         return label
     
     def node_to_xml(self, G, node_id):
@@ -146,7 +148,7 @@ class OurGraphToXML:
         source_id, target_id = edge.parent.node_id, edge.child.node_id
 
         edge_id = f'{source_id}_{target_id}'
-        value = str(edge.attrs)
+        value = (edge.attrs)
         mxCell = ET.Element('mxCell', id=edge_id, value=value, style="endArrow=classic;html=1;", parent="1", source=str(source_id), target=str(target_id), edge="1")
 
         # Create mxGeometry element
