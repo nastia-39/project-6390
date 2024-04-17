@@ -1,7 +1,6 @@
 from typing import Callable, List
 import ast 
 import copy
-
 from graph import OurGraph 
 
 
@@ -23,8 +22,8 @@ def get_assign_node(args: List[ast.arg], vars: List[ast.AST]):
     
     """
     new_vars_for_args = [ast.Name(id=x.arg, ctx=ast.Store()) for x in args]
-    targets_tuple = ast.Tuple(elts=new_vars_for_args,) # ctx=ast.Store()
-    value_tuple = ast.Tuple(elts=vars,) # ctx=ast.Load()
+    targets_tuple = ast.Tuple(elts=new_vars_for_args,) #TODO ctx=ast.Store()
+    value_tuple = ast.Tuple(elts=vars,) #TODO ctx=ast.Load()
     assign_node = ast.Assign(targets=[targets_tuple], value=value_tuple)
     return assign_node    
 
@@ -41,9 +40,10 @@ def expand_function(G: OurGraph, node_id: int):
     4. insert it before the function expansion: (x_new, y_new) = (1, 2); z = (x_new + y_new)
     """
     def renaming_fun(x):
-        return x + "_new"
+        return x + "_new" #TODO better renaming
 
-    G = copy.deepcopy(G)
+    # G = copy.deepcopy(G)
+    G.refresh()
     node = G.ast_nodes[node_id]
     assert isinstance(node, ast.Call), f"Node {node} is not a function call"
 
@@ -72,5 +72,51 @@ def expand_function(G: OurGraph, node_id: int):
 
     call_index = grandparent.body.index(parent)
     grandparent.body.insert(call_index, new_assign_node)
+    G.refresh()
+    return G
+
+
+def extract_function(G: OurGraph, parent_id: int, start: int, end: int):
+    # G = copy.deepcopy(G)
+    G.refresh()
+    parent = G.ast_nodes[parent_id]
+    assert hasattr(parent, 'body'), 'The node is not a function'
+    assert start < end, 'The start index should be smaller than the end index'
+    end_node = parent.body[end]
+
+    all_vars = []
+    for node_body in parent.body[start:end+1]:
+        all_vars.extend([node for node in ast.walk(node_body) if isinstance(node, ast.Name)])
+
+    all_vars_lookup = {var.id: sorted([node for node in all_vars if node.id == var.id], key=lambda x: x.lineno) for var in all_vars}
+
+    args = [ast.arg(arg=var, annotation=None) for var, appearances in all_vars_lookup.items() if isinstance(appearances[0].ctx, ast.Load)]
+    
+    function_name = 'extracted_function' # TODO
+
+    function_def = ast.FunctionDef(
+        name=function_name, 
+        args=ast.arguments(args=args, vararg=None, kwonlyargs=[], kw_defaults=[], kwarg=None, defaults=[]), 
+        body=parent.body[start:end+1], 
+        decorator_list=[]
+    )
+
+    call_node = ast.Call(
+        func=ast.Name(id=function_name, ctx=G.load_node), 
+        args=[ast.Name(id=arg.arg, ctx=G.load_node) for arg in args], 
+        keywords=[]
+        )
+
+    match end_node.__class__:
+        case ast.Assign:
+            return_node = ast.Return(ast.Name(id=end_node.targets[0].id, ctx=G.load_node))
+            function_def.body.append(return_node)
+            call_node = ast.Assign(targets=[ast.Name(id=end_node.targets[0].id, ctx=G.store_node)], value=call_node)
+        case ast.Call:
+            pass
+        case _:
+            raise ValueError('The end node should be an assignment or a function call')
+    
+    parent.body = parent.body[:start] + [function_def, call_node] + parent.body[end+1:]
     G.refresh()
     return G
