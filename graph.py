@@ -8,6 +8,7 @@ from typing import Dict, List, Tuple
 from functools import cached_property
 import uuid 
 import astor
+import copy
 
 class Node:
     def __init__(self, node_id: int, ast_node: ast.AST, parent=None):
@@ -61,7 +62,7 @@ class OurGraph:
         return self._ast_tree
     
     def to_source(self):
-        return astor.to_source(self._ast_tree)
+        return astor.to_source(copy.deepcopy(self._ast_tree))
 
     @property
     def load_node(self) -> ast.Load:
