@@ -53,9 +53,8 @@ class OurGraph:
         self.traverse(ast_tree)
         self.edges = self._nxG.edges
         self.pos = graphviz_layout(self._nxG, prog="dot")
-        x_max = max([x for x, _ in self.pos.values()])
         y_max = max([y for _, y in self.pos.values()])
-        self.pos_inv = {k: (x_max-x, y_max-y) for k, (x, y) in self.pos.items()}
+        self.pos_inv = {k: (x, y_max - y) for k, (x, y) in self.pos.items()}
 
     @property
     def ast_tree(self):
@@ -103,7 +102,7 @@ class OurGraph:
         self.pos = graphviz_layout(self._nxG, prog="dot")
         x_max = max([x for x, _ in self.pos.values()])
         y_max = max([y for _, y in self.pos.values()])
-        self.pos_inv = {k: (x_max-x, y_max-y) for k, (x, y) in self.pos.items()}
+        self.pos_inv = {k: (x, y) for k, (x, y) in self.pos.items()}
     
     def traverse(self, node: ast.AST, parent: Node = None):
         # node_id = f"v_{self._counter}"
