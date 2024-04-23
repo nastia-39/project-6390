@@ -120,3 +120,36 @@ def extract_function(G: OurGraph, parent_id: int, start: int, end: int):
     parent.body = parent.body[:start] + [function_def, call_node] + parent.body[end+1:]
     G.refresh()
     return G
+
+class RedundantVariableRemover(ast.NodeTransformer):
+    def __init__(self, redundant_vars):
+        self.redundant_vars = redundant_vars
+
+    def visit_Assign(self, node):
+        if len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
+            if node.targets[0].id in self.redundant_vars:
+                return None 
+        return self.generic_visit(node)
+
+def find_redundant_variables(G: OurGraph):
+    redundant_vars = set()
+    for _, node in G.our_nodes.items():
+        if isinstance(node.ast_node, ast.Assign) and len(node.ast_node.targets) == 1:
+            target = node.ast_node.targets[0]
+            if isinstance(target, ast.Name) and not is_variable_used(G, target.id):
+                redundant_vars.add(target.id)
+    return redundant_vars
+
+def is_variable_used(G: OurGraph, var_name):
+    for node in ast.walk(G.ast_tree):
+        if isinstance(node, ast.Name) and node.id == var_name and isinstance(node.ctx, ast.Load):
+            return True
+    return False
+
+def remove_redundant_variables(G: OurGraph):
+    redundant_vars = find_redundant_variables(G)
+    transformer = RedundantVariableRemover(redundant_vars)
+    new_ast = transformer.visit(G.ast_tree)
+    ast.fix_missing_locations(new_ast)
+    G.refresh()
+    return G
