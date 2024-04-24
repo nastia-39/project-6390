@@ -9,14 +9,69 @@ from functools import cached_property
 import uuid 
 import astor
 import copy
+from abc import ABC, abstractmethod
 
-class Node:
+
+class Node(ABC):
+    def __init__(self, ast_node: ast.AST, parent=None):
+        self.ast_node = ast_node
+        self.parent = parent
+
+    @property
+    @abstractmethod
+    def id(self) -> int:
+        pass
+
+    @property
+    @abstractmethod
+    def attrs(self) -> Dict:
+        pass
+    
+    @abstractmethod
+    def __repr__(self) -> str:
+        pass
+
+class Edge(ABC):
+    def __init__(self, parent: Node, child: Node):
+        self.parent = parent
+        self.child = child
+    
+    @property
+    def id(self) -> Tuple[int, int]:
+        return (self.parent.id, self.child.id)
+    
+    @property
+    @abstractmethod
+    def attrs(self) -> List:
+        pass
+
+def repr_ast(node: ast.AST):
+    d = {}
+    for field, value in ast.iter_fields(node):
+        if isinstance(value, list):
+            d[field] = '[...]'
+        elif isinstance(value, ast.AST):
+            d[field] = str(value.__class__.__name__)
+        else:
+            d[field] = value
+    s = ", ".join([f"{k}={v}" for k, v in d.items()] )
+    # s = f"{node.__class__.__name__}({s})"
+    return s
+
+class ASTNode(Node):
     def __init__(self, node_id: int, ast_node: ast.AST, parent=None):
         self.node_id = node_id
         self.ast_node = ast_node
         # self.attrs = attrs
         self.parent = parent
 
+    @property
+    def id(self) -> int:
+        return self.node_id
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(id={self.node_id}, {repr_ast(self.ast_node)})"
+    
     @property
     def attrs(self) -> Dict:
         d = self.ast_node.__dict__
@@ -26,10 +81,14 @@ class Node:
         d.pop('parent', None)
         return d
     
-class Edge:
-    def __init__(self, parent: Node, child: Node):
+class ASTEdge(Edge):
+    def __init__(self, parent: ASTNode, child: ASTNode):
         self.parent = parent
         self.child = child
+    
+    @property
+    def id(self) -> Tuple[int, int]:
+        return (self.parent.id, self.child.id)
     
     @property
     def attrs(self) -> List:
@@ -46,16 +105,17 @@ class OurGraph:
     def __init__(self, ast_tree: ast.AST):
         self._counter = 0
         self._ast_tree: ast.AST = ast_tree
-        self.our_nodes: Dict[int, Node] = {}
-        self.our_edges: Dict[Tuple, Edge] = {}
+        self.refresh()
+        # self.our_nodes: Dict[int, Node] = {}
+        # self.our_edges: Dict[Tuple, Edge] = {}
 
-        self.ast_nodes: Dict[int, ast.AST] = {} 
-        self._nxG: nx.DiGraph = nx.DiGraph()
-        self.traverse(ast_tree)
-        self.edges = self._nxG.edges
-        self.pos = graphviz_layout(self._nxG, prog="dot")
-        y_max = max([y for _, y in self.pos.values()])
-        self.pos_inv = {k: (x, y_max - y) for k, (x, y) in self.pos.items()}
+        # self.ast_nodes: Dict[int, ast.AST] = {} 
+        # self._nxG: nx.DiGraph = nx.DiGraph()
+        # self.traverse(ast_tree)
+        # self.edges = self._nxG.edges
+        # self.pos = graphviz_layout(self._nxG, prog="dot")
+        # y_max = max([y for _, y in self.pos.values()])
+        # self.pos_inv = {k: (x, y_max - y) for k, (x, y) in self.pos.items()}
 
     @property
     def ast_tree(self):
@@ -92,31 +152,33 @@ class OurGraph:
         should be called after modifying the ast_tree 
         """
         self._counter = 0
-        self.our_nodes: Dict[int, Node] = {}
-        self.our_edges: Dict[Tuple, Edge] = {}
-
+        self.our_nodes: Dict[int, ASTNode] = {}
+        self.our_edges: Dict[Tuple, ASTEdge] = {}
         self.ast_nodes: Dict[int, ast.AST] = {} 
         self._nxG = nx.DiGraph()
         self.traverse(self._ast_tree)
-        self.edges = self._nxG.edges
         self.edges = self._nxG.edges
         self.pos = graphviz_layout(self._nxG, prog="dot")
         y_max = max([y for _, y in self.pos.values()])
         self.pos_inv = {k: (x, y_max - y) for k, (x, y) in self.pos.items()}
     
-    def traverse(self, node: ast.AST, parent: Node = None):
+    def traverse(self, node: ast.AST, parent: ASTNode = None):
         # node_id = f"v_{self._counter}"
         node_id = id(node)
         self._counter += 1
         self.ast_nodes[node_id] = node
-        our_node = Node(node_id, node, parent=parent)
+        our_node = ASTNode(node_id, node, parent=parent)
         self.our_nodes[node_id] = our_node
 
         if parent is not None:
             self._nxG.add_edge(parent.node_id, node_id)
-            self.our_edges[(parent.node_id, node_id)] = Edge(parent, our_node)
-            
-        self.our_nodes[node_id] = our_node
+
+            if not(isinstance(node, ast.Store) or isinstance(node, ast.Load)):
+                self.our_edges[(parent.node_id, node_id)] = ASTEdge(parent, our_node)
+        
+        if not(isinstance(node, ast.Store) or isinstance(node, ast.Load)):    
+            self.our_nodes[node_id] = our_node
+
         for field, value in ast.iter_fields(node):
             if isinstance(value, list):
                 for item in value:
@@ -133,10 +195,92 @@ class OurGraph:
             attrs['fun_name'] = attrs.pop('name')
         self._nxG.nodes[node_id].update(attrs)
 
-
-    def from_file(filename):
+    @classmethod
+    def from_file(cls, filename):
         with open(filename, 'r') as file:
             code = file.read()
 
         tree = ast.parse(code)
-        return OurGraph(tree)
+        return cls(tree)
+
+
+class SyntaxToken(Node):
+    def __init__(self, name: str, scope: ast.FunctionDef, occurences: List[ASTNode] = []):
+        self.name = name
+        self.scope = scope
+        self.occurences = occurences
+    
+    @property
+    def id(self):
+        return f"stx_{self.name}_{id(self.scope)}"
+    
+    @property
+    def attrs(self):
+        return {"name": self.name, "scope": self.scope.name}
+    
+    def __repr__(self):
+        return f"SyntaxToken({self.name}, scope={self.scope.name})"
+
+class Occurence(Edge):
+    def __init__(self, node: ASTNode, token: SyntaxToken):
+        self.parent = token
+        self.child = node
+        
+    def __repr__(self):
+        return str(self.__dict__)
+    
+    @property
+    def attrs(self):
+        return {}
+
+
+class TravesalInfo:
+    def __init__(self, currect_scope: int, lookup: Dict[int, Dict[str, SyntaxToken]]):
+        self.lookup = lookup
+        self.current_scope = currect_scope
+
+
+
+class OurGraphWithNewNodes(OurGraph):
+
+    def refresh(self):
+        super().refresh()
+       
+        info = self.traverse_syntax_tokens(self.ast_tree.body[0], TravesalInfo(self.ast_tree.body[0], {}))
+        self.lookup = info.lookup     
+        self.syntax_tokens = {w.id: w for v in self.lookup.values() for w in v.values()}
+
+        token_pos = {token.id: (-150, 50*i) for i, token in enumerate(sorted(self.syntax_tokens.values(), key=lambda x: x.scope.lineno))}
+        self.pos_inv = {**self.pos_inv, **token_pos}
+        occurences = [Occurence(node, token) for token in self.syntax_tokens.values() for node in token.occurences]
+        self.occurences = {o.id: o for o in occurences}
+
+    def traverse_syntax_tokens(self, node: ast.AST, info: TravesalInfo):
+        name = node.arg if isinstance(node, ast.arg) else node.id if isinstance(node, ast.Name) else None
+        if name is not None:
+            if name not in info.lookup[id(info.current_scope)]:
+
+                token = SyntaxToken(name, info.current_scope, occurences=[])
+                info.lookup[id(info.current_scope)][name] = token
+
+            info.lookup[id(info.current_scope)][name].occurences.append(self.our_nodes[id(node)])
+
+        if isinstance(node, ast.FunctionDef):
+            lookup = info.lookup
+            lookup[id(node)] = {}
+            info = TravesalInfo(node, info.lookup)
+
+        for field, value in ast.iter_fields(node):
+            if isinstance(value, list):
+                for item in value:
+                    if isinstance(item, ast.AST):
+                        self.traverse_syntax_tokens(item, info)
+            elif isinstance(value, ast.AST):
+                self.traverse_syntax_tokens(value, info)
+            else:
+                pass
+
+        return info
+
+
+    
