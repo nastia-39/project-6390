@@ -346,6 +346,9 @@ def get_style_cls(element: Union[Node, Edge]):
     #     raise ValueError(f"Unknown node type: {element}")
 
 
+
+
+
 @dataclass
 class OurGraphToXML:
     def __init__(self, params: GeneralStyleParams = GeneralStyleParams()):
@@ -356,7 +359,7 @@ class OurGraphToXML:
 
         # Create diagram element
         diagram = ET.SubElement(
-            mxfile, "diagram", id="RFndyrCF2-3MIdXtw8gX", name="Page-1"
+            mxfile, "diagram", id="code-graph", name="Page-1"
         )
 
         # Create mxGraphModel element
