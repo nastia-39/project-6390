@@ -88,7 +88,7 @@ def extract_function(G: OurGraph, parent_id: int, start: int, end: int):
     for node_body in parent.body[start:end+1]:
         all_vars.extend([node for node in ast.walk(node_body) if isinstance(node, ast.Name)])
 
-    all_vars_lookup = {var.id: sorted([node for node in all_vars if node.id == var.id], key=lambda x: x.lineno) for var in all_vars}
+    all_vars_lookup = {var.id: [node for node in all_vars if node.id == var.id] for var in all_vars}
 
     args = [ast.arg(arg=var, annotation=None) for var, appearances in all_vars_lookup.items() if isinstance(appearances[0].ctx, ast.Load)]
     
