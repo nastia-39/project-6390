@@ -1,7 +1,7 @@
 from typing import Callable, List
 import ast 
 import copy
-from graph import OurGraph 
+from graph import CodeGraph 
 
 
 
@@ -28,7 +28,7 @@ def get_assign_node(args: List[ast.arg], vars: List[ast.AST]):
     return assign_node    
 
 
-def expand_function(G: OurGraph, node_id: int):
+def expand_function(G: CodeGraph, node_id: int):
     """
     Suppose we have function f(x, y) = x + y and call it on z = f(1, 2)
     1. retrieve the tree that corresponds to the function definition: z = (x + y)
@@ -76,7 +76,7 @@ def expand_function(G: OurGraph, node_id: int):
     return G
 
 
-def extract_function(G: OurGraph, parent_id: int, start: int, end: int):
+def extract_function(G: CodeGraph, parent_id: int, start: int, end: int):
     # G = copy.deepcopy(G)
     G.refresh()
     parent = G.ast_nodes[parent_id]
@@ -131,7 +131,7 @@ class RedundantVariableRemover(ast.NodeTransformer):
                 return None 
         return self.generic_visit(node)
 
-def find_redundant_variables(G: OurGraph):
+def find_redundant_variables(G: CodeGraph):
     redundant_vars = set()
     for _, node in G.our_nodes.items():
         if isinstance(node.ast_node, ast.Assign) and len(node.ast_node.targets) == 1:
@@ -140,13 +140,13 @@ def find_redundant_variables(G: OurGraph):
                 redundant_vars.add(target.id)
     return redundant_vars
 
-def is_variable_used(G: OurGraph, var_name):
+def is_variable_used(G: CodeGraph, var_name):
     for node in ast.walk(G.ast_tree):
         if isinstance(node, ast.Name) and node.id == var_name and isinstance(node.ctx, ast.Load):
             return True
     return False
 
-def remove_redundant_variables(G: OurGraph):
+def remove_redundant_variables(G: CodeGraph):
     redundant_vars = find_redundant_variables(G)
     transformer = RedundantVariableRemover(redundant_vars)
     new_ast = transformer.visit(G.ast_tree)
