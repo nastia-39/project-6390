@@ -1,5 +1,5 @@
 import ast
-from graph import OurGraph
+from graph import CodeGraph
 
 class RedundantVariableRemover(ast.NodeTransformer):
     def __init__(self, redundant_vars):
@@ -11,7 +11,7 @@ class RedundantVariableRemover(ast.NodeTransformer):
                 return None  # Removes the node from the AST
         return self.generic_visit(node)  # Continue traversing the AST
 
-def find_redundant_variables(G: OurGraph):
+def find_redundant_variables(G: CodeGraph):
     redundant_vars = set()
     for node_id, node in G.our_nodes.items():
         if isinstance(node.ast_node, ast.Assign) and len(node.ast_node.targets) == 1:
@@ -20,13 +20,13 @@ def find_redundant_variables(G: OurGraph):
                 redundant_vars.add(target.id)
     return redundant_vars
 
-def is_variable_used(G: OurGraph, var_name):
+def is_variable_used(G: CodeGraph, var_name):
     for node in ast.walk(G.ast_tree):
         if isinstance(node, ast.Name) and node.id == var_name and isinstance(node.ctx, ast.Load):
             return True
     return False
 
-def remove_redundant_variables(G: OurGraph):
+def remove_redundant_variables(G: CodeGraph):
     redundant_vars = find_redundant_variables(G)
     transformer = RedundantVariableRemover(redundant_vars)
     new_ast = transformer.visit(G.ast_tree)

@@ -2,7 +2,7 @@ from typing import Callable, List
 import ast 
 import copy
 
-from graph import OurGraph 
+from graph import CodeGraph 
 
 
 
@@ -29,7 +29,7 @@ def get_assign_node(args: List[ast.arg], vars: List[ast.AST]):
     return assign_node    
 
 
-def expand_function(G: OurGraph, node_id: int):
+def expand_function(G: CodeGraph, node_id: int):
     """
     Suppose we have function f(x, y) = x + y and call it on z = f(1, 2)
     1. retrieve the tree that corresponds to the function definition: z = (x + y)
