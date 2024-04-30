@@ -25,6 +25,12 @@ def get_assign_node(args: List[ast.arg], vars: List[ast.AST]):
     targets_tuple = ast.Tuple(elts=new_vars_for_args,) #TODO ctx=ast.Store()
     value_tuple = ast.Tuple(elts=vars,) #TODO ctx=ast.Load()
     assign_node = ast.Assign(targets=[targets_tuple], value=value_tuple)
+
+    # new_vars_for_args = [ast.Name(id=x.arg, ctx=ast.Store()) for x in args]
+    new_vars = ast.Tuple(elts=[ast.Name(id=x.arg, ctx=ast.Store()) for x in args],) 
+    values = ast.Tuple(elts=vars) 
+    assign_node = ast.Assign(targets=[new_vars], value=values)
+
     return assign_node    
 
 
@@ -44,11 +50,11 @@ def expand_function(G: CodeGraph, node_id: int):
 
     # G = copy.deepcopy(G)
     G.refresh()
-    node = G.ast_nodes[node_id]
+    node: ast.Call = G.ast_nodes[node_id]
     assert isinstance(node, ast.Call), f"Node {node} is not a function call"
 
     parent_id = G.get_parent(node_id)
-    parent = G.ast_nodes[parent_id]
+    parent: ast.Assign = G.ast_nodes[parent_id]
     assert parent.value == node, f"Parent node {parent} is not the function call {node}"
 
     function_defs = [
@@ -60,19 +66,51 @@ def expand_function(G: CodeGraph, node_id: int):
     if len(function_defs) > 1:
         print(f"Warning: Multiple function definitions for {node.func.id}")
 
-    fun_def_node = rename_all_vars(function_defs[-1], renaming_fun)
-    renamed_args = [ast.arg(arg=renaming_fun(x.arg), annotation=x.annotation) for x in fun_def_node.args.args]
+    
+    func_def: ast.FunctionDef = rename_all_vars(function_defs[-1], renaming_fun)
 
-    parent.value = copy.copy(fun_def_node.body[0].value)
+    def rename(a: ast.AST):
+        return rename_all_vars(a, renaming_fun)
+    
+    renamed_args = [ast.arg(arg=renaming_fun(x.arg), annotation=x.annotation) for x in func_def.args.args]
 
+    # parent.value = copy.copy(func_def.body[-1].value)
+
+    # new_vars = ast.Tuple(elts=[ast.Name(id=x.arg, ctx=ast.Store()) for x in renamed_args],) 
+    # values = ast.Tuple(elts=node.args) 
+    # assign_node = ast.Assign(targets=[new_vars], value=values)
     new_assign_node = get_assign_node(renamed_args, node.args)
 
     grandparent = G.ast_nodes[G.get_parent(parent_id)]
     assert hasattr(grandparent, 'body'), f"Grandparent node {grandparent} has no body"
 
-    call_index = grandparent.body.index(parent)
-    grandparent.body.insert(call_index, new_assign_node)
+    idx = grandparent.body.index(parent)
+    # grandparent.body = grandparent.body[:idx] + [new_assign_node] + func_def.body[:-1] + [parent] + grandparent.body[idx+1:]
+    ##################
+
+
+    x = grandparent
+    func_def: ast.FunctionDef = function_defs[-1]
+    assign = parent     # == |Assign|(value=Call(func=func_name), targets=t)
+    # renamed_args = [ast.arg(arg=renaming_fun(x.arg), annotation=x.annotation) for x in func_def.args.args]
+    # creating new variables to represent variables from the func_def scope 
+    new_vars = ast.Tuple(elts=[ast.Name(id=x.arg, ctx=ast.Store()) for x in rename(func_def).args.args]) 
+    values = ast.Tuple(elts=node.args) 
+
+    # assigning to the new variables values that were passed as function call arguments
+    assign_new_vars = ast.Assign(targets=[new_vars], value=values)
+
+    # changing the value of the original assignment from function call to its function AST
+    # func_def.body[-1].value is the return of the function 
+
+    assign.value = rename(func_def).body[-1].value 
+
+    x.body = x.body[:idx]  + [assign_new_vars] + rename(func_def).body[:-1] + [assign] + x.body[idx+1:]
+
     G.refresh()
+
+
+
     return G
 
 
